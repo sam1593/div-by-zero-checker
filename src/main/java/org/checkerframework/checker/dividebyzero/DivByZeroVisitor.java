@@ -13,12 +13,11 @@ import java.util.EnumSet;
 
 import com.sun.source.tree.BinaryTree;
 import com.sun.source.tree.CompoundAssignmentTree;
-
+import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.Tree;
 
 import org.checkerframework.checker.dividebyzero.qual.zero;
-import org.checkerframework.checker.dividebyzero.qual.nonZero;
-import org.checkerframework.checker.dividebyzero.qual.bottom;
+
 
 public class DivByZeroVisitor extends BaseTypeVisitor<DivByZeroAnnotatedTypeFactory> {
 
@@ -37,11 +36,13 @@ public class DivByZeroVisitor extends BaseTypeVisitor<DivByZeroAnnotatedTypeFact
      */
     private boolean errorAt(BinaryTree node) {
         // A BinaryTree can represent any binary operator, including + or -.
-        // TODO
+        
 
         if (DIVISION_OPERATORS.contains(node.getKind())) {
-            if (hasAnnotation(node.getRightOperand(), zero.class) || hasAnnotation(node.getRightOperand(), nonZero.class) || hasAnnotation(node.getRightOperand(), bottom.class)) {
-                return true;
+            ExpressionTree rightOperand = node.getRightOperand();
+            // Check if the right operand could be zero, which would cause a divide-by-zero error
+            if (hasAnnotation(rightOperand, zero.class)) {
+                return true;  // Report an error if the divisor is definitely zero
             }
         }
         return false;
@@ -57,14 +58,16 @@ public class DivByZeroVisitor extends BaseTypeVisitor<DivByZeroAnnotatedTypeFact
     private boolean errorAt(CompoundAssignmentTree node) {
         // A CompoundAssignmentTree represents any binary operator combined with an assignment,
         // such as "x += 10".
-        // TODO
+        
 
         if (DIVISION_OPERATORS.contains(node.getKind())) {
-            if (hasAnnotation(node.getExpression(), zero.class) || hasAnnotation(node.getExpression(), nonZero.class) || hasAnnotation(node.getExpression(), bottom.class)) {
-                return true;
+            ExpressionTree expression = node.getExpression();
+            // Check if the operation involves division or modulus by zero
+            if (hasAnnotation(expression, zero.class)) {
+                return true;  // Report an error if the divisor is definitely zero
             }
         }
-        return false; 
+        return false;
         
     }
 
