@@ -68,12 +68,52 @@ public class DivByZeroTransfer extends CFTransfer {
      * @return a refined type for lhs
      */
     private AnnotationMirror refineLhsOfComparison(
-            Comparison operator,
-            AnnotationMirror lhs,
-            AnnotationMirror rhs) {
-        // TODO
-        return lhs;
+        Comparison operator,
+    AnnotationMirror lhs,
+    AnnotationMirror rhs) {
+    AnnotationMirror zero = reflect(zero.class);
+    AnnotationMirror nonZero = reflect(nonZero.class);
+
+    switch (operator) {
+        case EQ:
+            // When both sides are equal, the most specific type they can both be is their glb
+            return glb(lhs, rhs); 
+
+        case NE:
+            // If rhs is zero and lhs != rhs, then lhs must be non-zero
+            if (equal(rhs, zero)) {
+                return nonZero;
+            }
+            // If rhs is non-zero and lhs != rhs, then lhs could be zero or another non-zero value
+            if (equal(rhs, nonZero)) {
+                return zero;
+            }
+            break;
+
+        case LT:
+        case GT:
+            // For less than and greater than, if we compare with zero, lhs must be non-zero
+            if (equal(rhs, zero)) {
+                return nonZero;
+            }
+            break;
+        
+        case LE:
+        case GE:
+            // If lhs <= zero or lhs >= zero, lhs could still be zero
+            if (equal(rhs, zero)) {
+                return lub(zero, nonZero); // It can be zero or any non-zero
+            }
+            break;
+
+        default:
+            // For unknown operators or if none of the above conditions apply, don't change the lhs
+            return lhs;
     }
+
+    // If no conditions apply, return lhs unchanged
+    return lhs;  // Default case, return lhs as is if no refinement is possible
+}
 
     /**
      * For an arithmetic expression (lhs `op` rhs), compute the point in the
@@ -90,12 +130,49 @@ public class DivByZeroTransfer extends CFTransfer {
      * @return the lattice point for the result of the expression
      */
     private AnnotationMirror arithmeticTransfer(
-            BinaryOperator operator,
-            AnnotationMirror lhs,
-            AnnotationMirror rhs) {
-        // TODO
+        BinaryOperator operator,
+        AnnotationMirror lhs,
+        AnnotationMirror rhs) {
+        AnnotationMirror zero = reflect(zero.class);
+        AnnotationMirror nonZero = reflect(nonZero.class);
+
+        switch (operator) {
+            case PLUS:
+            case MINUS:
+                
+                if (equal(lhs, zero) && equal(rhs, zero)) {
+                    return zero;
+                } else if (equal(lhs, nonZero) && equal(rhs, nonZero)) {
+                    return nonZero;
+                }
+                break;
+    
+            case TIMES:
+                // Multiplication by zero results in zero
+                if (equal(lhs, zero) || equal(rhs, zero)) {
+                    return zero;
+                } else if (equal(lhs, nonZero) && equal(rhs, nonZero)) {
+                    return nonZero;
+                }
+                break;
+    
+            case DIVIDE:
+            case MOD:
+                // Division by zero should return Bottom to indicate an error/undefined behavior
+                if (equal(rhs, zero)) {
+                    return bottom();
+                } else if (equal(lhs, zero) && equal(rhs, nonZero)) {
+                    return zero;
+                } else if (equal(lhs, nonZero) && equal(rhs, nonZero)) {
+                    return nonZero;
+                }
+                break;
+    
+            
+            
+        }
         return top();
-    }
+}
 
     // ========================================================================
     // Useful helpers
